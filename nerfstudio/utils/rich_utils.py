@@ -28,9 +28,16 @@ from rich.progress import (
     TimeRemainingColumn,
 )
 from rich.text import Text
+import sys
+import atexit
+
 
 CONSOLE = Console(width=120)
-
+#fileOutput = ""
+def openFileOutput(filename):
+    fileOutput =  open(filename, "a")
+    atexit.register(fileOutput.close)
+    return fileOutput
 
 class ItersPerSecColumn(ProgressColumn):
     """Renders the iterations per second for a progress bar."""

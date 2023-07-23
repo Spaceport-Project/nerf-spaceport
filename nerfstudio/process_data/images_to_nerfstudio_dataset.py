@@ -21,8 +21,8 @@ from nerfstudio.process_data import equirect_utils, process_data_utils
 from nerfstudio.process_data.colmap_converter_to_nerfstudio_dataset import (
     ColmapConverterToNerfstudioDataset,
 )
-from nerfstudio.utils.rich_utils import CONSOLE
-
+from nerfstudio.utils.rich_utils import openFileOutput, CONSOLE
+import sys
 
 @dataclass
 class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
@@ -34,6 +34,11 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
 
     def main(self) -> None:
         """Process images into a nerfstudio dataset."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        #if 'fileOutput' not in globals():
+        #     raise Exception("A global 'fileOutput' variable not defined")
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
 
         require_cameras_exist = False
         if self.colmap_model_path != ColmapConverterToNerfstudioDataset.default_colmap_path():

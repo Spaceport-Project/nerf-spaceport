@@ -111,6 +111,8 @@ class LoggingConfig(PrintableConfig):
 
     relative_log_dir: Path = Path("./")
     """relative path to save all logged events"""
+    absolute_log_file: Path = None
+
     steps_per_log: int = 10
     """number of steps between logging stats"""
     max_buffer_size: int = 20
