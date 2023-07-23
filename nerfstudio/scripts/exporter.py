@@ -46,8 +46,7 @@ from nerfstudio.exporter.marching_cubes import (
 from nerfstudio.fields.sdf_field import SDFField
 from nerfstudio.pipelines.base_pipeline import Pipeline, VanillaPipeline
 from nerfstudio.utils.eval_utils import eval_setup
-from nerfstudio.utils.rich_utils import CONSOLE
-
+from nerfstudio.utils.rich_utils import openFileOutput, CONSOLE
 
 @dataclass
 class Exporter:
@@ -57,6 +56,7 @@ class Exporter:
     """Path to the config YAML file."""
     output_dir: Path
     """Path to the output directory."""
+    absolute_log_file:Path = Path("log-file.txt")
 
 
 def validate_pipeline(normal_method: str, normal_output_name: str, pipeline: Pipeline) -> None:
@@ -120,6 +120,9 @@ class ExportPointCloud(Exporter):
 
     def main(self) -> None:
         """Export point cloud."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
 
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
@@ -198,6 +201,9 @@ class ExportTSDFMesh(Exporter):
 
     def main(self) -> None:
         """Export mesh"""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
 
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
@@ -281,6 +287,9 @@ class ExportPoissonMesh(Exporter):
 
     def main(self) -> None:
         """Export mesh"""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
 
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
@@ -375,6 +384,10 @@ class ExportMarchingCubesMesh(Exporter):
 
     def main(self) -> None:
         """Main function."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
+
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
 
@@ -426,6 +439,10 @@ class ExportCameraPoses(Exporter):
 
     def main(self) -> None:
         """Export camera poses"""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
+
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)
 

@@ -21,7 +21,7 @@ from nerfstudio.process_data import equirect_utils, process_data_utils
 from nerfstudio.process_data.colmap_converter_to_nerfstudio_dataset import (
     ColmapConverterToNerfstudioDataset,
 )
-from nerfstudio.utils.rich_utils import CONSOLE
+from nerfstudio.utils.rich_utils import openFileOutput, CONSOLE
 
 
 @dataclass
@@ -41,6 +41,9 @@ class VideoToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
 
     def main(self) -> None:
         """Process video into a nerfstudio dataset."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
 
         summary_log = []
         # Convert video to images

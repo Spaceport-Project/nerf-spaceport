@@ -59,7 +59,7 @@ from nerfstudio.model_components import renderers
 from nerfstudio.pipelines.base_pipeline import Pipeline
 from nerfstudio.utils import colormaps, install_checks
 from nerfstudio.utils.eval_utils import eval_setup
-from nerfstudio.utils.rich_utils import CONSOLE, ItersPerSecColumn
+from nerfstudio.utils.rich_utils import openFileOutput, CONSOLE, ItersPerSecColumn
 from nerfstudio.utils.scripts import run_command
 
 
@@ -305,6 +305,8 @@ class BaseRender:
     """Path to config YAML file."""
     output_path: Path = Path("renders/output.mp4")
     """Path to output video file."""
+    absolute_log_file: Path = Path("./log-file.txt")
+
     image_format: Literal["jpeg", "png"] = "jpeg"
     """Image format"""
     jpeg_quality: int = 100
@@ -330,6 +332,10 @@ class RenderCameraPath(BaseRender):
 
     def main(self) -> None:
         """Main function."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
+
         _, pipeline, _, _ = eval_setup(
             self.load_config,
             eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
@@ -439,6 +445,10 @@ class RenderInterpolated(BaseRender):
 
     def main(self) -> None:
         """Main function."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
+
         _, pipeline, _, _ = eval_setup(
             self.load_config,
             eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,
@@ -491,6 +501,10 @@ class SpiralRender(BaseRender):
 
     def main(self) -> None:
         """Main function."""
+        fileOutput = openFileOutput(self.absolute_log_file)
+        sys.stdout = fileOutput
+        CONSOLE.file = fileOutput
+
         _, pipeline, _, _ = eval_setup(
             self.load_config,
             eval_num_rays_per_chunk=self.eval_num_rays_per_chunk,

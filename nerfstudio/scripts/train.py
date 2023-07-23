@@ -51,6 +51,8 @@ import traceback
 from datetime import timedelta
 from typing import Any, Callable, Literal, Optional
 
+import sys
+import atexit
 import numpy as np
 import torch
 import torch.distributed as dist
@@ -62,7 +64,7 @@ from nerfstudio.configs.config_utils import convert_markup_to_ansi
 from nerfstudio.configs.method_configs import AnnotatedBaseConfigUnion
 from nerfstudio.engine.trainer import TrainerConfig
 from nerfstudio.utils import comms, profiler
-from nerfstudio.utils.rich_utils import CONSOLE
+from nerfstudio.utils.rich_utils import openFileOutput,  CONSOLE
 
 DEFAULT_TIMEOUT = timedelta(minutes=30)
 
@@ -226,6 +228,11 @@ def launch(
 def main(config: TrainerConfig) -> None:
     """Main function."""
 
+    fileOutput = openFileOutput(config.logging.absolute_log_file)
+    #if 'fileOutput' not in globals():
+    #    raise Exception("A global 'fileOutput' variable not defined")
+    sys.stdout = fileOutput
+    CONSOLE.file = fileOutput
     config.set_timestamp()
     if config.data:
         CONSOLE.log("Using --data alias for --data.pipeline.datamanager.data")

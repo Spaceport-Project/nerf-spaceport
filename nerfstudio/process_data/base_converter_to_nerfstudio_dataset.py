@@ -29,6 +29,7 @@ class BaseConverterToNerfstudioDataset(ABC):
     """Path the data, either a video file or a directory of images."""
     output_dir: Path
     """Path to the output directory."""
+    absolute_log_file: Path = Path("./log-file.txt")
     verbose: bool = False
     """If True, print extra logging."""
 
