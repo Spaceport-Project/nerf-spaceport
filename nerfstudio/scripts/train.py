@@ -246,6 +246,8 @@ def main(config: TrainerConfig) -> None:
         CONSOLE.log(f"Loading pre-set config from: {config.load_config}")
         config = yaml.load(config.load_config.read_text(), Loader=yaml.Loader)
 
+    config.set_timestamp()
+
     # print and save config
     config.print_to_terminal()
     config.save_config()
