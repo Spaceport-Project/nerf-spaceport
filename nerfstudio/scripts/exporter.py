@@ -56,7 +56,7 @@ class Exporter:
     """Path to the config YAML file."""
     output_dir: Path
     """Path to the output directory."""
-    absolute_log_file:Path = Path("log-file.txt")
+    absolute_log_file:Path = Path("./log-file_export.txt")
 
 
 def validate_pipeline(normal_method: str, normal_output_name: str, pipeline: Pipeline) -> None:

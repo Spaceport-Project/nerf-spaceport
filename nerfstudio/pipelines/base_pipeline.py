@@ -306,6 +306,7 @@ class VanillaPipeline(Pipeline):
                 metrics_dict["camera_opt_translation"] = (
                     self.datamanager.get_param_groups()[camera_opt_param_group][0].data[:, :3].norm()
                 )
+                
                 metrics_dict["camera_opt_rotation"] = (
                     self.datamanager.get_param_groups()[camera_opt_param_group][0].data[:, 3:].norm()
                 )

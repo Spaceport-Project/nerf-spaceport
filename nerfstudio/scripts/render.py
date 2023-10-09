@@ -323,7 +323,7 @@ class BaseRender:
     """Path to config YAML file."""
     output_path: Path = Path("renders/output.mp4")
     """Path to output video file."""
-    absolute_log_file: Path = Path("./log-file.txt")
+    absolute_log_file: Path = Path("./log-file_render.txt")
 
     image_format: Literal["jpeg", "png"] = "jpeg"
     """Image format"""
