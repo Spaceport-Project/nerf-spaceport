@@ -332,7 +332,8 @@ class BaseRender:
     """Path to config YAML file."""
     output_path: Path = Path("renders/output.mp4")
     """Path to output video file."""
-    absolute_log_file: Path = Path("./log-file_render.txt")
+    is_log_to_file: bool = False
+    absolute_log_file: Path = Path("./log-file-render.txt")
 
     image_format: Literal["jpeg", "png"] = "jpeg"
     """Image format"""
@@ -363,9 +364,11 @@ class RenderCameraPath(BaseRender):
 
     def main(self) -> None:
         """Main function."""
-        fileOutput = openFileOutput(self.absolute_log_file)
-        sys.stdout = fileOutput
-        CONSOLE.file = fileOutput
+        if self.is_log_to_file:
+            fileOutput = openFileOutput(self.absolute_log_file)
+            sys.stdout = fileOutput
+            sys.stderr = fileOutput
+            CONSOLE.file = fileOutput
 
         _, pipeline, _, _ = eval_setup(
             self.load_config,

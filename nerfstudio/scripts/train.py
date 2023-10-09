@@ -228,11 +228,13 @@ def launch(
 def main(config: TrainerConfig) -> None:
     """Main function."""
 
-    fileOutput = openFileOutput(config.logging.absolute_log_file)
-    #if 'fileOutput' not in globals():
-    #    raise Exception("A global 'fileOutput' variable not defined")
-    sys.stdout = fileOutput
-    CONSOLE.file = fileOutput
+    if config.logging.is_log_to_file:
+        fileOutput = openFileOutput(config.logging.absolute_log_file)
+        sys.stdout = fileOutput
+        sys.stderr = fileOutput
+        CONSOLE.file = fileOutput
+
+
     config.set_timestamp()
     if config.data:
         CONSOLE.log("Using --data alias for --data.pipeline.datamanager.data")

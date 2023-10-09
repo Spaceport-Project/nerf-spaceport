@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Processes a video to a nerfstudio compatible dataset."""
-
+import sys
 import shutil
 from dataclasses import dataclass
 

@@ -108,7 +108,10 @@ class LoggingConfig(PrintableConfig):
 
     relative_log_dir: Path = Path("./")
     """relative path to save all logged events"""
-    absolute_log_file: Path = Path("./log-file_train.txt")
+
+    is_log_to_file: bool = False
+   
+    absolute_log_file: Path = Path("./log-file-train.txt")
 
     steps_per_log: int = 10
     """number of steps between logging stats"""

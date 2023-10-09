@@ -181,7 +181,10 @@ The following will train a _nerfacto_ model, our recommended model for real worl
 # Download some test data:
 ns-download-data nerfstudio --capture-name=poster
 # Train model
-ns-train nerfacto --data data/nerfstudio/poster
+ns-train nerfacto --data data/nerfstudio/poster 
+#if you want to log realtime output to a text file, use the following command. for --logging.is-log-to-file, default:False, 
+#for --logging.absolute-log-file, default "./log-file-train.txt"
+ns-train nerfacto --logging.is-log-to-file True --logging.absolute-log-file ./sample-log.txt --data /path/to/data
 ```
 
 If everything works, you should see training progress like the following:
@@ -224,6 +227,9 @@ Other video export options are available, learn more by running
 
 ```bash
 ns-render --help
+#if you want to log realtime output to a text file, use the following sample command. for --is-log-to-file, default:False, 
+#for --absolute-log-file, default "./log-file-render.txt"
+ns-render camera-path --is-log-to-file True --absolute-log-file ./sample-log.txt --load-config /path/to/yml/config/file --camera-path-filename /path/to/camera/json/file
 ```
 
 ### Generate Point Cloud
@@ -234,11 +240,21 @@ Alternatively you can use the CLI without the viewer. Learn about the export opt
 
 ```bash
 ns-export pointcloud --help
+#if you want to log realtime output to a text file, use the following sample command. for --is-log-to-file, default:False, 
+#for --absolute-log-file, default "./log-file-export.txt"
+ns-export pointcloud --is-log-to-file True --absolute-log-file ./sample-log.txt --load-config /path/to/yml/config/file -output-dir /path/to/output/dir/
 ```
 
 ## 4. Using Custom Data
 
 Using an existing dataset is great, but likely you want to use your own data! We support various methods for using your own data. Before it can be used in nerfstudio, the camera location and orientations must be determined and then converted into our format using `ns-process-data`. We rely on external tools for this, instructions and information can be found in the documentation.
+
+```bash
+ns-process-data images --help
+#if you want to log realtime output to a text file, use the following sample command. for --is-log-to-file, default:False, 
+#for --absolute-log-file, default "./log-file-process.txt"
+ns-process-data images --is_log_to_file --absolute-log-file ./sample-log.txt --data /path/to/data --output-dir /path/to/output/dir/
+```
 
 | Data                                                                                                 | Capture Device | Requirements                                                      | `ns-process-data` Speed |
 | ---------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------- | ----------------------- |

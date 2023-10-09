@@ -57,7 +57,8 @@ class Exporter:
     """Path to the config YAML file."""
     output_dir: Path
     """Path to the output directory."""
-    absolute_log_file:Path = Path("./log-file_export.txt")
+    is_log_to_file: bool = False
+    absolute_log_file:Path = Path("./log-file-export.txt")
 
 
 def validate_pipeline(normal_method: str, normal_output_name: str, pipeline: Pipeline) -> None:
@@ -128,9 +129,11 @@ class ExportPointCloud(Exporter):
 
     def main(self) -> None:
         """Export point cloud."""
-        fileOutput = openFileOutput(self.absolute_log_file)
-        sys.stdout = fileOutput
-        CONSOLE.file = fileOutput
+        if self.is_log_to_file:
+            fileOutput = openFileOutput(self.absolute_log_file)
+            sys.stdout = fileOutput
+            sys.stderr = fileOutput
+            CONSOLE.file = fileOutput
 
         if not self.output_dir.exists():
             self.output_dir.mkdir(parents=True)

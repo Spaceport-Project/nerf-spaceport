@@ -30,7 +30,9 @@ class BaseConverterToNerfstudioDataset(ABC):
     """Path the data, either a video file or a directory of images."""
     output_dir: Path
     """Path to the output directory."""
-    absolute_log_file: Path = Path("./log-file.txt")
+    is_log_to_file: bool = False
+    absolute_log_file: Path = Path("./log-file-process.txt")
+
     eval_data: Optional[Path] = None
     """Path the eval data, either a video file or a directory of images. If set to None, the first will be used both for training and eval"""
     verbose: bool = False

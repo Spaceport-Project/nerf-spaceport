@@ -37,11 +37,12 @@ class ImagesToNerfstudioDataset(ColmapConverterToNerfstudioDataset):
 
     def main(self) -> None:
         """Process images into a nerfstudio dataset."""
-        fileOutput = openFileOutput(self.absolute_log_file)
-        #if 'fileOutput' not in globals():
-        #     raise Exception("A global 'fileOutput' variable not defined")
-        sys.stdout = fileOutput
-        CONSOLE.file = fileOutput
+        
+        if self.is_log_to_file:
+            fileOutput = openFileOutput(self.absolute_log_file)
+            sys.stdout = fileOutput
+            sys.stderr = fileOutput
+            CONSOLE.file = fileOutput
 
         require_cameras_exist = False
         if self.colmap_model_path != ColmapConverterToNerfstudioDataset.default_colmap_path():
