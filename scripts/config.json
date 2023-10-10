@@ -1,0 +1,6 @@
+{
+    "DATA_DIR_IN": "/home/hamit/Softwares/repos/nerfplayer/data/ts_7_600images",
+    "DATA_DIR_OUT": "/home/hamit/Softwares/repos/nerfstudio/data/dynamic_data/wrapped_data_new_600/rgb",
+    "JSON_DIR_OUT": "/home/hamit/Softwares/repos/nerfstudio/data/dynamic_data/wrapped_data_new_600",
+    "CALIB_JSON_DIR": "/home/hamit/Softwares/repos/nerfplayer/data/transforms_truth.json"
+}
