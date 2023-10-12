@@ -241,44 +241,41 @@ def create_camera_jsons(calibration_file, serial_num_mapping, rgb_input_path, ou
             for frame_data in calibration_data["frames"]:
                 if expected_filename == frame_data['file_path']:
                     #frame_calibration = filename_to_calibration.get(expected_filename, None)
-                    frame_data_new = frame_data
-                    matrix_np = np.array(frame_data["transform_matrix"])
-                    # Find the inverse
-                    try:
-                        inverse_matrix_np = np.linalg.inv(matrix_np)
-                    except np.linalg.LinAlgError:
-                        print("The matrix is singular and cannot be inverted")
-                    #inverse_transform_list = inverse_matrix_np.tolist()
-                    # The flip matrix F_zy
-                    F_zy = np.array([
-                        [1, 0, 0, 0],
-                        [0, -1, 0, 0],
-                        [0, 0, -1, 0],
-                        [0, 0, 0, 1]
-                    ])
-
-                    # Multiply T by F_zy to get the flipped transformation matrix T'
-                    T_prime = np.dot(matrix_np, F_zy)
-                    inverse_transform_list = T_prime.tolist()
+                    frame_data_new = {}
+                    frame_data_new["fl_x"] = frame_data["fl_x"]
+                    frame_data_new["fl_y"] = frame_data["fl_y"]
+                    frame_data_new["w"] = frame_data["w"]
+                    frame_data_new["h"] = frame_data["h"]
+                    frame_data_new["cx"] = frame_data["cx"]
+                    frame_data_new["cy"] = frame_data["cy"]
+                    frame_data_new["k1"] = frame_data["k1"]
+                    frame_data_new["k2"] = frame_data["k2"]
+                    frame_data_new["k3"] = frame_data["k3"]
+                    frame_data_new["k4"] = frame_data["k4"]
+                    frame_data_new["p1"] = frame_data["p1"]
+                    frame_data_new["p2"] = frame_data["p2"]
+                    frame_data_new["transform_matrix"] = frame_data["transform_matrix"]
+                    frame_data_new["camera_model"] = frame_data["camera_model"]
 
             # If we couldn't find calibration data, skip this image
             if frame_data_new is None:
                 continue
             
             transformed_calibration = {
-                "focal_length": frame_data_new["fl_x"],  # assuming fl_x and fl_y are similar
-                "image_size": [frame_data_new["w"], frame_data_new["h"]],
-                "orientation": [inverse_transform_list[0][:3],
-                                inverse_transform_list[1][:3],
-                                inverse_transform_list[2][:3]],  # assumes you want the 3x3 top-left submatrix
-                "pixel_aspect_ratio": 1.0,  # assuming square pixels
-                "position": [inverse_transform_list[0][3],
-                             inverse_transform_list[1][3],
-                             inverse_transform_list[2][3]],
-                "principal_point": [frame_data_new["cx"], frame_data_new["cy"]],
-                "radial_distortion": [frame_data_new["k1"], frame_data_new["k2"], frame_data_new["k3"]],
-                "skew": 0.0,  # assuming no skew
-                "tangential_distortion": [frame_data_new["p1"], frame_data_new["p2"]]
+                "transform_matrix": frame_data_new["transform_matrix"], # 4x4 matrix
+                "fl_x": frame_data_new["fl_x"], # float
+                "fl_y": frame_data_new["fl_y"], # float
+                "c_x": frame_data_new["cx"], # float
+                "c_y": frame_data_new["cy"], # float
+                "h": frame_data_new["h"], # int
+                "w": frame_data_new["w"], # int
+                "k1": frame_data_new["k1"], # float
+                "k2": frame_data_new["k2"], # float
+                "k3": frame_data_new["k3"], # float
+                "k4": frame_data_new["k4"], # float
+                "p1": frame_data_new["p1"], # float
+                "p2": frame_data_new["p2"], # float
+                "camera_model": frame_data_new["camera_model"] # string
             }
             # Create the new JSON filename
             json_filename = f"{cam_id}_{frame_idx}.json"

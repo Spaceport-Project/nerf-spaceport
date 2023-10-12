@@ -5,11 +5,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Type
 
+import cv2
 import imageio
 import numpy as np
 import torch
 
-from nerfstudio.cameras.cameras import Cameras, CameraType
+from nerfstudio.cameras import camera_utils
+from nerfstudio.cameras.cameras import (CAMERA_MODEL_TO_TYPE, Cameras,
+                                        CameraType)
 from nerfstudio.data.dataparsers.base_dataparser import (DataParser,
                                                          DataParserConfig,
                                                          DataparserOutputs)
@@ -45,83 +48,6 @@ def _load_metadata_info(data_dir: Path) -> Tuple[np.ndarray, np.ndarray, np.ndar
     return frame_names_map, time_ids, camera_ids
 
 
-def process_frames(self, frame_names: List[str], time_ids: np.ndarray, camera_ids: np.ndarray) -> Tuple[List, List]:
-    """Read cameras and filenames from the name list.
-
-    Args:
-        frame_names: list of file names.
-        time_ids: time id of each frame.
-
-    Returns:
-        A list of camera, each entry is a dict of the camera.
-    """
-    image_filenames = []
-    poses = []
-    cams = []
-    for idx, frame in enumerate(frame_names):
-        # print(f"rgb/{self.config.downscale_factor}x/{frame}.png")
-        image_filenames.append(
-            self.data / f"rgb/{self.config.downscale_factor}x/{frame}.png")
-        poses.append(np.array(frame["transform_matrix"]))
-
-        cam_json = load_from_json(self.data / f"camera/{frame}.json")
-        c2w = torch.as_tensor(cam_json["orientation"]).T
-        position = torch.as_tensor(cam_json["position"])
-        position -= self._center  # some scenes look weird (wheel)
-        position *= self._scale * self.config.scale_factor
-        pose = torch.zeros([3, 4])
-        pose[:3, :3] = c2w
-        pose[:3, 3] = position
-        # from opencv coord to opengl coord (used by nerfstudio)
-        pose[0:3, 1:3] *= -1  # switch cam coord x,y
-        pose = pose[[1, 0, 2], :]  # switch world x,y
-        pose[2, :] *= -1  # invert world z
-        # for aabb bbox usage
-        pose = pose[[1, 2, 0], :]  # switch world xyz to zxy
-        cams.append(
-            {
-                "camera_to_worlds": pose,
-                "fx": cam_json["focal_length"] / self.config.downscale_factor,
-                "fy": cam_json["focal_length"] * cam_json["pixel_aspect_ratio"] / self.config.downscale_factor,
-                "cx": cam_json["principal_point"][0] / self.config.downscale_factor,
-                "cy": cam_json["principal_point"][1] / self.config.downscale_factor,
-                "height": cam_json["image_size"][1] // self.config.downscale_factor,
-                "width": cam_json["image_size"][0] // self.config.downscale_factor,
-                "times": torch.as_tensor(time_ids[idx] / self._time_ids.max()).float(),
-            }
-        )
-
-    d = self.config.downscale_factor
-    if not image_filenames[0].exists():
-        CONSOLE.print(f"downscale factor {d}x not exist, converting")
-        print(f"rgb/1x/{frame_names[0]}.png")
-        ori_h, ori_w = cv2.imread(
-            str(self.data / f"rgb/1x/{frame_names[0]}.png")).shape[:2]
-        (self.data / f"rgb/{d}x").mkdir(exist_ok=True)
-        h, w = ori_h // d, ori_w // d
-        for frame in frame_names:
-            cv2.imwrite(
-                str(self.data / f"rgb/{d}x/{frame}.png"),
-                cv2.resize(cv2.imread(
-                    str(self.data / f"rgb/1x/{frame}.png")), (h, w)),
-            )
-        CONSOLE.print("finished")
-
-    """if not depth_filenames[0].exists():
-            CONSOLE.print(f"processed depth downscale factor {d}x not exist, converting")
-            (self.data / f"processed_depth/{d}x").mkdir(exist_ok=True, parents=True)
-            for idx, frame in enumerate(frame_names):
-                depth = np.load(self.data / f"depth/1x/{frame}.npy")
-                mask = rescale((depth != 0).astype(np.uint8) * 255, 1 / d, cv2.INTER_AREA)
-                depth = rescale(depth, 1 / d, cv2.INTER_AREA)
-                depth[mask != 255] = 0
-                depth = _rescale_depth(depth, cams[idx])
-                np.save(str(self.data / f"processed_depth/{d}x/{frame}.npy"), depth)
-            CONSOLE.print("finished")"""
-    depth_filenames = []
-    return image_filenames, cams
-
-
 @dataclass
 class NerfplayerMulticamDataParserConfig(DataParserConfig):
     """Nerfstudio dataset config"""
@@ -132,6 +58,8 @@ class NerfplayerMulticamDataParserConfig(DataParserConfig):
     """Directory or explicit json file path specifying location of data."""
     scale_factor: float = 1.0
     """How much to scale the camera origins by."""
+    scene_scale: float = 1.0
+    """How much to scale the region of interest by."""
     downscale_factor: int = 1
     """How much to downscale images. If not set, images are chosen such that the max dimension is <1600px."""
     scene_box_bound: float = 1.5
@@ -154,6 +82,133 @@ class NerfplayerMulticam(DataParser):
         self.alpha_color = config.alpha_color
         self._frame_names_map, self._time_ids, self._camera_ids = _load_metadata_info(
             self.data)
+
+    def _process_frames(self, frame_names: List[str], time_ids: np.ndarray) -> Tuple[List, List]:
+        """Read cameras and filenames from the name list.
+
+        Args:
+            frame_names: list of file names.
+            time_ids: time id of each frame.
+
+        Returns:
+            A list of camera, each entry is a dict of the camera.
+        """
+        image_filenames = []
+        poses = []
+        cams = []
+        for idx, frame in enumerate(frame_names):
+            # print(f"rgb/{self.config.downscale_factor}x/{frame}.png")
+            image_filenames.append(
+                self.data / f"rgb/{self.config.downscale_factor}x/{frame}.png")
+            cam_json = load_from_json(self.data / f"camera/{frame}.json")
+
+            if "transform_matrix" in cam_json:
+                trans_mat = cam_json["transform_matrix"]
+
+                # Assert that trans_mat is a list or a list of lists with numeric values
+                assert isinstance(trans_mat, list), "trans_mat must be a list"
+                assert all(isinstance(row, list)
+                           for row in trans_mat), "Each element of trans_mat must be a list"
+                assert all(all(isinstance(el, (int, float)) for el in row)
+                           for row in trans_mat), "Each element in the sublists of trans_mat must be a number"
+
+                trans_mat_np = np.array(trans_mat)
+
+                # Assert that trans_mat_np can be sliced into shape [:3, :4]
+                assert trans_mat_np.shape[0] >= 3 and trans_mat_np.shape[
+                    1] >= 4, "trans_mat_np must be at least of shape (3, 4)"
+
+                pose = trans_mat_np[:3, :4]
+
+            if "fl_x" in cam_json:
+                fx_fixed = cam_json["fl_x"]
+
+                # Assert that fx_fixed is a number
+                assert isinstance(fx_fixed, (int, float)
+                                  ), "fx_fixed must be a number"
+
+            if "fl_y" in cam_json:
+                fy_fixed = cam_json["fl_y"]
+
+                # Assert that fy_fixed is a number
+                assert isinstance(fy_fixed, (int, float)
+                                  ), "fy_fixed must be a number"
+
+            if "c_x" in cam_json:
+                cx_fixed = cam_json["c_x"]
+
+                # Assert that cx_fixed is a number
+                assert isinstance(cx_fixed, (int, float)
+                                  ), "cx_fixed must be a number"
+
+            if "c_y" in cam_json:
+                cy_fixed = cam_json["c_y"]
+
+                # Assert that cy_fixed is a number
+                assert isinstance(cy_fixed, (int, float)
+                                  ), "cy_fixed must be a number"
+
+            if "h" in cam_json:
+                height_fixed = cam_json["h"]
+
+                # Assert that height_fixed is an integer
+                assert isinstance(
+                    height_fixed, int), "height_fixed must be an integer"
+
+            if "w" in cam_json:
+                width_fixed = cam_json["w"]
+
+                # Assert that width_fixed is an integer
+                assert isinstance(
+                    width_fixed, int), "width_fixed must be an integer"
+
+            distort = []
+            distort.append(
+                camera_utils.get_distortion_params(
+                    k1=float(cam_json["k1"]) if "k1" in cam_json else 0.0,
+                    k2=float(cam_json["k2"]) if "k2" in cam_json else 0.0,
+                    k3=float(cam_json["k3"]) if "k3" in cam_json else 0.0,
+                    k4=float(cam_json["k4"]) if "k4" in cam_json else 0.0,
+                    p1=float(cam_json["p1"]) if "p1" in cam_json else 0.0,
+                    p2=float(cam_json["p2"]) if "p2" in cam_json else 0.0,
+                )
+            )
+
+            if "camera_model" in cam_json:
+                camera_type = CAMERA_MODEL_TO_TYPE[cam_json["camera_model"]]
+            else:
+                camera_type = CameraType.PERSPECTIVE
+
+            cams.append(
+                {
+                    "camera_to_worlds": pose,
+                    "fx": fx_fixed,
+                    "fy": fy_fixed,
+                    "cx": cx_fixed,
+                    "cy": cy_fixed,
+                    "height": height_fixed,
+                    "width": width_fixed,
+                    "distortion_params": distort,
+                    "times": torch.as_tensor(time_ids[idx] / self._time_ids.max()).float(),
+                }
+            )
+
+        d = self.config.downscale_factor
+        if not image_filenames[0].exists():
+            CONSOLE.print(f"downscale factor {d}x not exist, converting")
+            ori_h, ori_w = cv2.imread(
+                str(self.data / f"rgb/1x/{frame_names[0]}.png")).shape[:2]
+            (self.data / f"rgb/{d}x").mkdir(exist_ok=True)
+            h, w = ori_h // d, ori_w // d
+            for frame in frame_names:
+                cv2.imwrite(
+                    str(self.data / f"rgb/{d}x/{frame}.png"),
+                    cv2.resize(cv2.imread(
+                        str(self.data / f"rgb/1x/{frame}.png")), (h, w)),
+                )
+            CONSOLE.print("finished")
+
+        return image_filenames, cams
 
     def _generate_dataparser_outputs(self, split: str = "train") -> DataparserOutputs:
         if self.alpha_color is not None:
@@ -178,9 +233,60 @@ class NerfplayerMulticam(DataParser):
             time_ids = np.array(split_dict["time_ids"])[[0]]
             camera_ids = np.array(split_dict["camera_ids"])
 
-        image_filenames, cams = self.process_frames(
-            frame_names.tolist(), time_ids.tolist(), time_ids, camera_ids)
+        image_filenames, cams = self._process_frames(
+            frame_names.tolist(), time_ids)
 
-        # in x,y,z order
-        # assumes that the scene is centered at the origin
         aabb_scale = self.config.scene_scale
+        scene_box = SceneBox(aabb=torch.tensor([[-aabb_scale, -aabb_scale, -aabb_scale],
+                                                [aabb_scale, aabb_scale, aabb_scale]],
+                                               dtype=torch.float32))
+
+        cam_dict = {}
+
+        """for k in cams[0].keys():
+            print(f"Key: {k}, Value: {cams[0][k]}, Type: {type(cams[0][k])}")
+
+            # Handling list of tensors by extracting the tensor before stacking
+            if isinstance(cams[0][k], list) and isinstance(cams[0][k][0], torch.Tensor):
+                cam_dict[k] = torch.stack([c[k][0].float() for c in cams])
+
+            # Handling 'height' and 'width' by converting them to integer tensors
+            elif k in ['height', 'width']:
+                cam_dict[k] = torch.stack(
+                    [torch.tensor(c[k], dtype=torch.int32) for c in cams])
+
+            # Handling other cases by converting them to float tensors
+            else:
+                cam_dict[k] = torch.stack(
+                    [torch.tensor(c[k], dtype=torch.float32) for c in cams])"""
+
+        for k in cams[0].keys():
+            # print(f"Key: {k}, Value: {cams[0][k]}, Type: {type(cams[0][k])}")
+
+            # Explicit handling for 'distort' key
+            if k == 'distortion_params':
+                cam_dict[k] = torch.stack([c[k][0].float() for c in cams])
+
+            # Handling 'height' and 'width' by converting them to integer tensors
+            elif k in ['height', 'width']:
+                cam_dict[k] = torch.stack(
+                    [torch.tensor(c[k], dtype=torch.int32) for c in cams])
+
+            # Handling other cases by converting them to float tensors
+            else:
+                # Verify that the data is not a boolean before converting to float tensor
+                if not isinstance(cams[0][k], bool):
+                    cam_dict[k] = torch.stack(
+                        [torch.tensor(c[k], dtype=torch.float32) for c in cams])
+                else:
+                    print(f"Warning: Skipping key '{k}' due to boolean value.")
+
+        cameras = Cameras(camera_type=CameraType.PERSPECTIVE, **cam_dict)
+
+        dataparser_outputs = DataparserOutputs(image_filenames=image_filenames,
+                                               cameras=cameras,
+                                               scene_box=scene_box,
+                                               alpha_color=alpha_color_tensor,
+                                               )
+
+        return dataparser_outputs
