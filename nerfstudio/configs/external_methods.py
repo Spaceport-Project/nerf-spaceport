@@ -117,6 +117,8 @@ To enable NeRFPlayer, you must install it first by running:
         configurations=[
             ("nerfplayer-nerfacto", "NeRFPlayer with nerfacto backbone"),
             ("nerfplayer-ngp", "NeRFPlayer with instang-ngp-bounded backbone"),
+            ("nerfplayer-nerfacto-multicam", "NeRFPlayer with nerfacto backbone and multi-camera data loader"),
+            ("nerfplayer-ngp-multicam", "NeRFPlayer with instang-ngp-bounded backbone and multi-camera data loader"),
         ],
     )
 )
