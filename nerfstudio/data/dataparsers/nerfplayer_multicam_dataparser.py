@@ -89,7 +89,7 @@ class NerfplayerMulticam(DataParser):
         self._frame_names_map, self._time_ids, self._camera_ids = _load_metadata_info(
             self.data)
 
-    def _process_frames(self, frame_names: List[str], time_ids: np.ndarray) -> Tuple[List, List]:
+    def _process_frames(self, frame_names: List[str], time_ids: np.ndarray, split: str) -> Tuple[List, List]:
         """Read cameras and filenames from the name list.
 
         Args:
@@ -212,6 +212,17 @@ class NerfplayerMulticam(DataParser):
             center_method=self.config.center_method,
         )
 
+        if split == "train":
+            print('scale_factor: ', torch.max(torch.abs(poses[:, :3, 3])))
+            # Scale poses
+            scale_factor = 1.0
+            if self.config.auto_scale_poses:
+                scale_factor /= float(torch.max(torch.abs(poses[:, :3, 3])))
+            scale_factor *= self.config.scale_factor
+
+            poses[:, :3, 3] *= scale_factor
+
+
         for i in range(len(cams)):
             cams[i]["camera_to_worlds"] = poses[i, :3, :4]
 
@@ -256,7 +267,7 @@ class NerfplayerMulticam(DataParser):
             camera_ids = np.array(split_dict["camera_ids"])
 
         image_filenames, cams = self._process_frames(
-            frame_names.tolist(), time_ids)
+            frame_names.tolist(), time_ids, split)
 
         aabb_scale = self.config.scene_scale
         scene_box = SceneBox(aabb=torch.tensor([[-aabb_scale, -aabb_scale, -aabb_scale],

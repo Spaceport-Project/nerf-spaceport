@@ -331,9 +331,9 @@ def create_camera_jsons(calibration_file, serial_num_mapping, rgb_input_path, ou
 
 
 def main():
-    #serial_num_map = rename_images(image_dir=DATA_DIR_IN, output_dir=DATA_DIR_OUT)
+    serial_num_map = rename_images(image_dir=DATA_DIR_IN, output_dir=DATA_DIR_OUT)
 
-    #create_dataset_jsons(DATA_DIR_OUT, JSON_DIR_OUT)
+    create_dataset_jsons(DATA_DIR_OUT, JSON_DIR_OUT)
 
     with open(os.path.join(DATA_DIR_OUT, 'serial_number_mapping.json'), 'r') as f:
         serial_num_map = json.load(f)
