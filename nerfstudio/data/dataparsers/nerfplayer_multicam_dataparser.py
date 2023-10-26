@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Type
+from typing import Dict, Optional, Tuple, Type, Literal
 
 import cv2
 import imageio
@@ -66,6 +66,12 @@ class NerfplayerMulticamDataParserConfig(DataParserConfig):
     """Boundary of scene box."""
     alpha_color: str = "white"
     """alpha color of background"""
+    orientation_method: Literal["pca", "up", "vertical", "none"] = "up"
+    """The method to use for orientation."""
+    center_method: Literal["poses", "focus", "none"] = "poses"
+    """The method to use to center the poses."""
+    auto_scale_poses: bool = True
+    """Whether to automatically scale the poses to fit in +/- 1 bounding box."""
 
 
 @dataclass
@@ -96,6 +102,9 @@ class NerfplayerMulticam(DataParser):
         image_filenames = []
         poses = []
         cams = []
+
+        orientation_method = self.config.orientation_method
+
         for idx, frame in enumerate(frame_names):
             # print(f"rgb/{self.config.downscale_factor}x/{frame}.png")
             image_filenames.append(
@@ -113,6 +122,7 @@ class NerfplayerMulticam(DataParser):
                            for row in trans_mat), "Each element in the sublists of trans_mat must be a number"
 
                 trans_mat_np = np.array(trans_mat)
+                poses.append(trans_mat_np)
 
                 # Assert that trans_mat_np can be sliced into shape [:3, :4]
                 assert trans_mat_np.shape[0] >= 3 and trans_mat_np.shape[
@@ -192,6 +202,18 @@ class NerfplayerMulticam(DataParser):
                     "times": torch.as_tensor(time_ids[idx] / self._time_ids.max()).float(),
                 }
             )
+
+        # TODO: Handle the validation data since it has only 1 frame it is placed to the center
+        # This does not have an effect on training but in the viewer it causes confision
+        poses = torch.from_numpy(np.array(poses).astype(np.float32))
+        poses, transform_matrix = camera_utils.auto_orient_and_center_poses(
+            poses,
+            method=orientation_method,
+            center_method=self.config.center_method,
+        )
+
+        for i in range(len(cams)):
+            cams[i]["camera_to_worlds"] = poses[i, :3, :4]
 
         d = self.config.downscale_factor
         if not image_filenames[0].exists():
